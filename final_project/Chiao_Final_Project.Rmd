@@ -61,7 +61,7 @@ This project does not happen without the creation of the [`nwslR`](https://githu
 This study will be working with two data sets primarily. The first and primary data set was scraped from the NWSL website by the creators of the `nwslR` package. The data housed in the `nwslR` package include ID tables and statistics. We will be using the `nwslR::team_stats_season` table. We have abbreviated this table to include data that is within the scope of the study, from 2016 to 2019, and narrowed the data to include just the metrics that this study is interested in working with, as well as identifying data points, including the season the team played, the team_id, and performance metrics. League ranking per team per season was manually combined and added as a csv.
 ```{r datset_2, echo = FALSE}
 #devtools::install_github("adror1/nwslR")
-
+library(DT)
 library(nwslR)
 library(dplyr)
 
@@ -230,6 +230,18 @@ descrip_stats_by_season2 %>%
   kable_classic(html_font = "Cambria")
 ```
 As you can see in the table above, the mean win number across the seasons is fairly consistent and interacts with the mean draw number and the mean loss number as the mean wins and mean losses decreases, the mean draws increase. The mean number of goals peaked in 2017, with 35.182 goals for each team.  
+
+```{r}
+library(ggplot2)
+library(maps)
+library(dplyr)
+library(tidyverse)  
+library(ggmap)
+register_google(key = "[AIzaSyDVmtZoTwHnloEAIR0To1iqzl5E-kdpw0w]", write = TRUE)
+library(plotly)
+library(rgdal)
+nyc <- readOGR(dsn = "/Users/jackiez/Downloads/assignment-2-airbnb-zhuyijie25-main/data/nyc_boroughs_map", layer = "nybb")
+```
 
 The following table breaks out game statistics by team. The Boston Breakers were dissolved in 2017 and the Western New York Flash was dissolved in 2018. 
 ```{r descrip2, echo = FALSE}
