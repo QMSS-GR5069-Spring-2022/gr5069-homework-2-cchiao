@@ -1,0 +1,384 @@
+---
+title: 'Country Over Club?: An Analysis of USWNT Players and NWSL Club Performance'
+author: "Christa Chiao (cjc2297)"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+subtitle: GR5015 Final Project
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      warning = FALSE,
+                      error = FALSE, 
+                      message = FALSE, 
+                      tidy.opts=list(width.cutoff=60),
+                      tidy = TRUE) # just for the outline
+
+set.seed(998350) # important because allows to trace random procedures 
+rm(list = ls(all = TRUE)) # remove all previous objects 
+
+
+setwd("C:/Users/chris/OneDrive/Documents/R/GR5015/Final Project")
+```
+
+## Introduction
+### Overview  
+
+This study looks to investigate the impact of United States Women's National Team (USWNT) players on their respective club teams' performance in their domestic league, the National Women's Soccer League (NWSL). USWNT players play for both their club team and their national team, often missing significant swaths of regular club seasons to play in international tournaments, friendlies, or to train in national team camp. The NWSL has historically not stopped their play during these major tournaments with teams forced to play their younger or less experienced players in starting slots. This can impact the overall performance of these club teams in numerous ways: younger or less experienced players can make significant mistakes, causes teams to lose games they would have likely won or these players can have a breakthrough moment: a twenty-one year old rookie has an absolutely beautiful goal, or a goalkeeper has the shutout of their life. The number of national team players that a club keeps on their roster is a matter of debate: is it more advantageous (purely from a team performance perspective) to have a roster of players who are able to have full availability, or to have one or two star players? This study endeavors, in part, to answer this question. 
+  
+### Research Question and Hypothesis  
+This study poses the question:  
+  
+Do USWNT players impact their club team performance during the 2016 through 2019 regular seasons? What is the impact of US-allocated players on club performance, specifically, games won, games drawn, games lost, goals for, playoff qualification, and league standing?
+    
+My hypothesis is that USWNT players starting or coming off the bench during regular season NWSL games has a meaningful relationship to the performance of club teams. I believe that the more often USWNT players are involved in regular season games, the better their club team's performance, which will be defined in the Variables section and the Data Description.  
+
+### Variables  
+The independent variable for this study is the frequency that USWNT players are either starting or coming off the bench during NWSL regular season games. This includes both field players and goalkeepers. For the purposes of this study, we will define "USWNT players" as professional athletes who are federation players, as indicated by the United States Soccer Federation.[^1]
+
+The dependent variable is the performance of club teams during the regular season. This project will define "club team performance" with the following:  
+
+- **Games Won**: The number of games won during the regular season  
+- **Games Drawn**: The number of games that ended in a draw during the regular season  
+- **Games Lost**: The number of games that ended in a loss during the regular season  
+- **Goals For**: The number of goals scored by the club during the regular season  
+- **Playoff Qualification**: This is a binary 1 or 0 variable where 1 is that the club qualified for the playoffs and 0 is that the club did not qualify for the playoffs  
+- **League Standing**: The standing of the clubs where 1 indicates that the club was first in the league standings at the end of the regular season  
+
+### Scope of Study  
+This study will limit its scope to the 2016, 2017, 2018, and 2019 regular seasons as to include a broad enough swath of games and types of years, but will limit to games and seasons prior to the COVID-19 pandemic, which changed the structure of the season for the NWSL, culminating in the Challenge Cup. This study will also limit its scope to the players allocated by the United States Soccer Federation. The NWSL contained allocated players from three different countries in 2016 - 2019: Canada, Mexico, and the United States.  
+  
+  
+This project does not happen without the creation of the [`nwslR`](https://github.com/adror1/nwslR) package by Arielle Dror and Sophia Tannir. Thank you to these pioneers for creating and investing in women's soccer analytics.
+  
+  
+## Data Description  
+
+### Data Set
+This study will be working with two data sets primarily. The first and primary data set was scraped from the NWSL website by the creators of the `nwslR` package. The data housed in the `nwslR` package include ID tables and statistics. We will be using the `nwslR::team_stats_season` table. We have abbreviated this table to include data that is within the scope of the study, from 2016 to 2019, and narrowed the data to include just the metrics that this study is interested in working with, as well as identifying data points, including the season the team played, the team_id, and performance metrics. League ranking per team per season was manually combined and added as a csv.
+```{r datset_2, echo = FALSE}
+#devtools::install_github("adror1/nwslR")
+
+library(nwslR)
+library(dplyr)
+
+league_finishes <- read.csv("team_stats.csv")
+
+team_stats <- left_join(nwslR::team_stats_season, league_finishes, 
+                        by = c("season" = "season", "team_id" = "team_id"))
+
+team_stats <- team_stats %>% 
+  filter(season >= 2016 & season <= 2019) %>%
+  mutate(goals_for = goals) %>%
+  mutate(playoffs = if_else(league_ranking <= 4, 1, 0)) %>%
+  select(season, team_id, goals_for, wins, draws, losses, league_ranking, playoffs)
+  
+
+team_xover <- nwslR::franchise %>%
+  group_by(team_id) %>%
+  select(team_id, team_name) %>%
+  distinct(team_id, team_name)
+
+team_stats <- left_join(team_stats, team_xover, by = "team_id")
+
+team_stats <- as_tibble(team_stats)
+
+team_stats_head <- team_stats %>% select(
+  season, team_name, wins, draws, losses, goals_for, league_ranking, playoffs)
+
+team_stats_head <- head(team_stats_head)
+
+team_stats_head %>%
+  kableExtra::kbl(booktabs = T) %>%
+  kableExtra::kable_classic()
+  
+```
+
+The second data set that this study will use is a player-level data set. This data set is limited to field-players, or players who do not play in goal. This study will exclude goalkeepers. In order to identify individual players, we have joined in the `player` data set, which includes player name, the position on the field the player plays, and any aliases the player might go by. Additionally, we've limited the data set to what is in the scope of this study: filtering to players from the United States and to players within the 2016 - 2019 seasons. 
+```{r dataset_4, echo = FALSE}
+player_stats <- nwslR::fieldplayer_overall_season_stats %>%
+  filter(season >= 2016 & season <= 2019) %>%
+  filter(nation == 'USA')
+
+player_name <- nwslR::player %>% select(person_id, player)
+
+player_stats <- left_join(player_stats, player_name, by = "person_id") %>% 
+  mutate(player_name = player) %>%
+  select(-c(player))
+
+player_stats <- left_join(player_stats, team_xover, by = "team_id")
+
+player_stats_head <- player_stats %>%
+  select(player_name, season, pos, team_name, mp, starts)
+  
+player_stats_head <- head(player_stats_head)
+
+player_stats_head %>%
+  kableExtra::kbl(booktabs = T) %>%
+  kableExtra::kable_classic()
+```
+
+We also need to figure out which players are allocated from the years 2016 - 2019. This is not a publicly available pre-compiled data set (that I could find!) so I manually searched and compiled this data set.[^3] We are joining this data set to the `player_stats` data set from above with a binary flag for `allocated == 1` where the player was a United States Federation allocated player that year and `allocated == 0` if the player was *not* a USF allocated player that year. With that final addition, we have our final, person/player-level data set. 
+```{r dataset_5, echo = FALSE}
+allocated_players <- read.csv("allocated_players.csv")
+
+player_stats <- left_join(player_stats, allocated_players, 
+                          by = c("season" = "season", 
+                                 "person_id" = "person_id"))
+
+player_stats <- player_stats %>% select(person_id, season, nation, pos, team_id,
+                       team_name, mp, starts, min, gls, ast, pk, p_katt, crd_y,
+                       crd_r, player_name.x, allocated) %>% 
+                      dplyr::rename(player_name = player_name.x)
+                       
+player_stats_head <- player_stats %>%
+  select(player_name, season, pos, team_name, allocated)
+
+player_stats_head <- head(player_stats_head)
+
+player_stats_head %>%
+  kableExtra::kbl(booktabs = T) %>%
+  kableExtra::kable_classic()
+```
+
+One final step is to join these two data sets together to have our final data set with 
+```{r dataset_final, echo = FALSE}
+alloc_stats_by_team_season <- player_stats %>% 
+    group_by(team_id, season) %>% # our group
+    summarise( # summarise operation by group
+        total_alloc = sum(allocated),
+        mean_min = mean(min[allocated == 1]),
+        mean_starts = mean(starts[allocated == 1])
+    )
+
+alloc_stats_by_team_season$mean_min[is.nan(alloc_stats_by_team_season$mean_min)] <- 0
+alloc_stats_by_team_season$mean_starts[is.nan(alloc_stats_by_team_season$mean_starts)] <- 0
+
+team_stats <- left_join(team_stats, alloc_stats_by_team_season, 
+                              by = c("team_id" = "team_id", "season" = "season"))
+
+team_stats <- team_stats %>% select(season, team_name, goals_for, wins, draws,
+                                    losses, league_ranking, playoffs, 
+                                    total_alloc, mean_min, mean_starts)
+team_stats_alloc_head <- head(team_stats)
+
+team_stats_alloc_head %>%
+  kableExtra::kbl(booktabs = T) %>%
+  kableExtra::kable_classic()
+```
+
+### Variables
+The independent variable of the study is if an NWSL player is allocated by the US Soccer Federation (USSF), which is a binary value in the `player_stats` data set. These data were collected from a number of sources online. Which players USSF chooses to allocate and how many players USSF chooses to allocate varies from year to year, although there is some consistency. The USSF tends to semi-consistently allocate players, although the club teams these players play for are not always consistent, and the number of allocated players on each team varies over the seasons.
+```{r var_1, echo = FALSE}
+# install.packages("kableExtra")
+
+library(kableExtra)
+library(tidyr)
+
+df <- player_stats %>%
+  group_by(season, allocated) %>%
+  tally() %>%
+  spread(allocated, n) %>%
+  filter(season > 2015)
+
+df %>%
+  kableExtra::kbl(booktabs = T) %>%
+  kableExtra::kable_classic()
+```
+
+The dependent variables are as follows:  
+
+- **Games Won**: The "Games Won" variable is the number of games won during the regular season. This number is represented as `wins` in the `team_stats` data set. This number is unchanged from the raw data and ranges from 1 to 17, with a median of 7 wins and has a standard deviation of 3.721.  
+- **Games Drawn**: The "Games Drawn" variable is the number of games that ended in a draw during the regular season. This number is represented as `draws` in the `team_stats` data set. This number is unchanged from the raw data and ranges from 1 to 10 with a median of 5 draws and has a standard deviation of 2.002. 
+- **Games Lost**: The "Games Lost" variable is the number of games that ended in a loss during the regular season. This number is represented as `losses` in the `team_stats` data set. This number is unchanged from the raw data and ranges from 1 to 17 with a median of 8 losses and has a standard deviation of 3.962.  
+- **Goals For**: The "Goals For" variable is the number of goals scored by the club during the regular season. This number is represented by the `goals_for` variable in the `team_stats` data set. This number is unchanged and unprocessed from the raw data and ranges from 12 to 54 with a median of 29.5 goals scored for a team. The standard deviation of `goals for` is 9.959.  
+- **League Standing**: The "League Standing" variable is the place in which clubs were on the final day of the regular season. This variable was gathered separately from the `nwslR` package and joined to the data. The data is organized where if a team has a `league_ranking == 1`, they were first in the league on points earned during the regular season.[^2]  
+- **Playoff Qualification**: The "Playoff Qualification" variable is a simplification of the "League Standing" variable, and is a binary variable where 1 is that the club qualified for the playoffs and 0 is that the club did not qualify for the playoffs during the regular season. This variable is imputed from "League Standing" as teams automatically qualify for playoffs if they have a league standing of 4 or lower (which is higher) at the end fo the regular season.  
+
+
+## Descriptive Statistics
+
+I broke out our variables of interest into a number of tables on two different variables: by **season** and by **team**. I further divided the descriptive statistics into game-specific statistics (Games Won, Games Drawn, Games Lost, and Goals For) and season-round-up variables (League Ranking and PlayofF Qualification).
+```{r descrip, echo = FALSE}
+descrip_stats_by_season1 <- team_stats %>% 
+    group_by(season) %>% # our group
+    summarise( # summarise operation by group
+        wins_mean = mean(wins),
+        draws_mean = mean(draws),
+        losses_mean = mean(losses),
+        goals_for_mean = mean(goals_for),
+    )
+
+descrip_stats_by_season2 <- team_stats %>% 
+    group_by(season) %>% # our group
+    summarise( # summarise operation by group
+        wins_sd = sd(wins),
+        draws_sd = sd(draws),
+        losses_sd = sd(losses),
+        goals_for_sd = sd(goals_for),
+    )
+
+descrip_stats_by_season1 %>%
+  kableExtra::kbl(booktabs = T, digits = 2) %>%
+  kable_classic(html_font = "Cambria")
+
+descrip_stats_by_season2 %>%
+  kableExtra::kbl(booktabs = T, digits = 2) %>%
+  kable_classic(html_font = "Cambria")
+```
+As you can see in the table above, the mean win number across the seasons is fairly consistent and interacts with the mean draw number and the mean loss number as the mean wins and mean losses decreases, the mean draws increase. The mean number of goals peaked in 2017, with 35.182 goals for each team.  
+
+The following table breaks out game statistics by team. The Boston Breakers were dissolved in 2017 and the Western New York Flash was dissolved in 2018. 
+```{r descrip2, echo = FALSE}
+descrip_stats_by_team1 <- team_stats %>% 
+  group_by(team_name) %>% # our group
+  summarise( # summarise operation by group
+        wins_mean = mean(wins),
+        draws_mean = mean(draws),
+        losses_mean = mean(losses),
+        goals_for_mean = mean(goals_for),
+    )
+
+descrip_stats_by_team2 <- team_stats %>% 
+  group_by(team_name) %>% # our group
+  summarise( # summarise operation by group
+        wins_sd = sd(wins),
+        draws_sd = sd(draws),
+        losses_sd = sd(losses),
+        goals_for_sd = sd(goals_for),
+    )
+
+descrip_stats_by_team3 <- team_stats %>%
+  group_by(team_name) %>%
+  summarise(
+       league_ranking_mean = mean(league_ranking),
+       league_ranking_sd = sd(league_ranking),
+       playoff_mean = mean(playoffs),
+       playoff_sd = sd(playoffs)
+       )
+
+
+alloc_stats_by_team <- player_stats %>% 
+    group_by(team_name) %>% # our group
+    summarise( # summarise operation by group
+        mean = mean(allocated),
+        sd = sd(allocated)
+    )
+
+descrip_stats_by_team1 %>%
+  kableExtra::kbl(booktabs = T, digits = 3) %>%
+  kable_classic(full_width = F, html_font = "Cambria")
+
+descrip_stats_by_team2 %>%
+  kableExtra::kbl(booktabs = T, digits = 3) %>%
+  kable_classic(full_width = F, html_font = "Cambria")
+```
+As can be seen in the table above, the North Carolina Courage leads the teams in the mean number of wins with 16 wins, with Portland Thorns FC and Chicago Red Stars in second and third with 12.25 wins and 10.75 wins, on average, respectively. The Boston Breakers lead the average losses with 14.000 losses, followed by Sky Blue FC with 12.500 losses. The North Carolina Courage leads the league in average number of goals with 48.333, followed by the Western New York Flash (40.000) and Portland Thorns FC (38.000).  
+
+This table shows the average league position in `league_ranking_mean` as well as the percentage success that a club has had reaching the playoffs (in the number of attempts).
+```{r descrip3, echo = FALSE}
+descrip_stats_by_team3 %>%
+  kableExtra::kbl(booktabs = T, digits = 3) %>%
+  kable_classic(full_width = F, html_font = "Cambria")
+```
+The North Carolina Courage, Portland Thorns, and the Chicago Red Stars lead the mean League Ranking variable (by having the lowest values), while the Boston Breakers, Sky Blue FC, and the Houston Dash are at the bottom of the League Ranking variable (by having the highest values). In the four regular seasons that make up the 2016-2019 years, the Chicago Red Stars, North Carolina Courage, and the Portland Thorns have qualified for all four playoff tournaments[^4], Seattle Reign FC qualified for 50%, or two of four playoff tournaments, the Washington Spirit and the Orlando Pride qualified for 25%, or one of four playoff tournaments, and the Boston Breakers, FC Kansas City, Houston Dash, Sky Blue FC, and Utah Royals have qualified for zero playoff tournaments between 2016 and 2019.  
+
+This allocation table indicate the mean and standard deviation of the USSF-allocated number of players. 
+```{r descrip4, echo = FALSE}
+alloc_stats_by_team %>%
+  kableExtra::kbl(booktabs = T, digits = 3) %>%
+  kable_classic(full_width = F, html_font = "Cambria")
+```
+
+## Initial Models
+Tell me what model you are using and why (logit, probit, LPM, fixed effects, etc.).  Start off with a simple model relating you main IV to your main DV.  Explain the relationship and why this initial model is insufficient.  Maybe you need to make a scale/index of variables.  Maybe you need to control for additional factors.  Maybe you want to include interaction terms. Maybe you need to check for serial correlation.  Etc.  Interpret everything correctly (ceteris paribus, on the right scale, etc.) 
+
+I'm initially starting with a multiple linear regression models to predict league ranking and the number of wins that a team has. The first multiple linear model is moderately successful in understanding the relationship between the three allocated player variables (`total_alloc`, `mean_min`, and `mean_starts`). This prediction model looks like:
+```{r results = 'asis', echo=FALSE, warning=FALSE, out.width = "400px"}
+knitr::include_graphics(path = "one.png")
+```
+
+The first multiple linear regression model, `lm1` shows that a unit increase of the `total_alloc` variable would, on average, increase the number of wins by 0.712 games, net of other variables. The `total_alloc` variable has a p-value well below .05 of 0.00703, and thus, at a 95% confidence interval is a statistically significant predictor of the number of wins that a club will have in a given season. The mean number of minutes, indicated by variable `mean_min` shows that with a unit increase in the number of minutes a USSF-allocated player has on the field, the team will have an increase of 0.021 wins, with a p-value of .125, on average and net of other variables. This indicates that the mean number of minutes a USSF-allocated player has on the field does not have strong correlation with the number of games won. The third variable, `mean_starts` shows an interesting turn: on average, with a unit increase in the number of starts that an allocated player has during the NWSL regular season, the team will win -1.740 games fewer, with a p-value = .163, net of other variables. This indicates that the mean number of starts by a US allocated player is not correlated with the number of games won and is a weak predictor of this metric. 
+```{r im1, echo = FALSE}
+lm1 <- lm(wins ~ total_alloc + mean_min + mean_starts, data = team_stats)
+# summary(lm1)
+```
+
+I then tried to add the interaction term of `season` that I hypothesize will mediate the relationship between the number of players allocated to a team and the number of wins.
+
+The second multiple linear regression model, `lm3`is not very effective. It shows that a unit increase of the `total_alloc` variable would, on average, increase the number of wins by 0.0028 games, net of other variables. The `total_alloc` variable has a p-value of 0.584 and thus, at a 95% confidence interval, is not a statistically significant predictor of the number of wins that a club will have. The mean number of minutes shows that with a unit increase in the number of minutes a USSF-allocated player has on the field, the team will have an increase of 0.0012 wins, with a p-value of .389, on average and net of other variables. This indicates that the mean number of minutes a USSF-allocated player has on the field does not have strong correlation with the number of games won. The third variable, `mean_starts` reports a relationship that is consistent with the first linear model: on average, with a unit increase in the number of starts that an allocated player has during the NWSL regular season, the team will win -0.0940 games fewer, with a p-value = .448, net of other variables. This indicates that the mean number of starts by a US allocated player is not correlated with the number of games won and is a weak predictor of this metric. 
+```{r im2, echo = FALSE}
+lm2 <- lm(wins ~ total_alloc*season + mean_min + mean_starts, data = team_stats)
+# summary(lm2)
+```
+
+
+A table comparing the these multiple linear models can be found here (See Table 1: Model Comparison):
+```{r stargazer1, results = 'asis', header = FALSE}
+stargazer::stargazer(lm1, lm2, type = "latex", title = "Model Comparison")
+```
+
+The second multiple linear regression model I'm running  looks to predict the relationship between the overall league ranking and the three allocated player variables. This prediction model looks like:
+```{r results = 'asis', echo=FALSE, warning=FALSE, out.width = "400px"}
+knitr::include_graphics(path = "two.PNG")
+```
+
+The third linear regression looks to investigate the relationship between a team's league ranking on the final day of the regular season and any allocation variables. This model shows that with a unit increase in the `total_alloc` variable, the team would, on average, place -1.194 places lower, net of other variables. This means that with an increase of one US allocated player, the league ranking would decrease by over a place. This p-value is well below .05, and the relationship is statistically significant at a 95% confidence interval. On average, a unit increase in the mean number of minutes that a US-allocated player plays during the regular season, net of other variables, causes a 0.01 decrease in league placement at the end of the regular season, although this is not a statistically significant variable. A unit increase in the number of starts by an allocated player results in a 0.965 increase in league placement, although again, this is not a statistically significant variable.
+
+```{r im3, echo = FALSE}
+lm3 <- lm(league_ranking ~ total_alloc + mean_min + mean_starts, data = team_stats)
+# summary(lm3)
+```
+
+I then tried adding in the season as a variable because the games take place is an important factor in determining league placement, and should be kept in suspension. The results were similar to my other regressions, with the number of allocated players as significant in relation to a team's league ranking. On average, a unit increase in the total number of US allocated players would cause a 1.190 decrease in league placement, net of other variables. The p-value is .0001. 
+```{r im4, echo = FALSE}
+lm4 <- lm(league_ranking ~ total_alloc + season + mean_min + mean_starts, data = team_stats)
+# summary(lm4)
+```
+
+A table comparing the multiple linear models that attempted to predict the league ranking can be found here (see Table 2: Model Comparison):
+```{r stargazer2, echo = FALSE, results = 'asis', header = FALSE}
+stargazer::stargazer(lm3, lm4, type = "latex", title = "Model Comparison")
+```
+Adding in the `season` variable to the second multiple linear model in the table did not hugely change coefficients or the result of the model. This is likely because while the season is an important indicator of time as well as shows important inflection points for how many or which allocated players play on which team, they are largely more consistent than I previously thought.
+
+I decided my final move would be to add team name to the model. This model resulted in interesting, but ultimately unhelpful results. The model pulled out teams that have consistently shown good results and who have a sizable number of allocated players. I'll summarize only a number of these results. When adding in `team_name` into the model, the number of allocated players does not stand out as a statistically significant predictor of the number of wins that a team will have at the end of the regular season. The model indicates that with a unit increase in the number of allocated players, there will be, on average, a 0.420 increase in wins at the end of the regular season, net of other factors (p = .330). Being the Chicago Red Stars causes, on average, a 6.411 increase in the number of wins at the end of the regular season, net of other factors, and being the North Carolina Courage causes, on average, an 11.381 increase in the number of wins at the end of the regular season, net of other factors. These relationships are statistically significant at a 95% confidence interval, if not a helpful explanatory model. (See Table 3:Model 5)
+```{r im5, echo = FALSE, results = 'asis', header = FALSE}
+lm5 <- lm(wins ~ total_alloc + as.factor(team_name), data = team_stats)
+# summary(lm5)
+
+stargazer::stargazer(lm5, type = "latex", title = "Model 5")
+```
+
+
+## Final Models
+This table contains the best models from my previous iterating:
+```{r model_table, results = 'asis', echo = FALSE, header = FALSE}
+lm6 <- lm(wins ~ total_alloc + season, data = team_stats)
+# summary(lm6)
+
+stargazer::stargazer(lm6, type = "latex", title = "Best Model for Wins")
+
+stargazer::stargazer(lm4, type = "latex", title = "Best Model for League Ranking")
+```
+My fourth and sixth models were my best models because of their relatively low RSE and their significant p-values at a 95% confidence interval. The fourth multiple regression model I ran was the best model for predicting the relationship between the number of USSF-allocated players and the league ranking a team would be at the end of the regular season, and the sixth model I ran was the best model for predicting the relationship between the number of USSF-allocated players and the number of games a team would win at the end of the regular season. (See Tables 4 and 5)
+
+## Conclusions
+
+According to the statistical findings in this study, the increased number of USSF-allocated players will increase the number of regular season games that a team will win. Th This study showed a significant relationship between wins and the the number of USSF-allocated players on make up a roster. The number of minutes played by an allocated player, or the number of games where an allocated player is in the starting lineup does not have any bearing on the number of games a team wins, and the ultimate league ranking at the end of the regular season. 
+
+This analysis is quite limited to the data available and the time available to conduct this analysis. One limitation is noted at the top of this analysis: this study is limited to field players only, and the two to three USSF-allocated goal keepers are not included in the counts or various metrics in this study. This study also only limits to US players, while players in the NWSL include Canadian players and for a short while, Mexican players. Expanding the scope to include all of these groups would increase the strength of this study. 
+
+If I were to revisit this project, I would seek out more data than exists in the `nwslR` package. The NWSL was founded in 2012 and has run consistently, with the exception of 2020[^5], through the 2021 regular season. I would gather as much data from the 9 years of the NWSL, as well as previous iterations of the NWSL, Women's Professional Soccer (WPS), which ran from 2007 until 2012, and the Women's United Soccer Association (WUSA), which ran from 2001 until 2003. This additional data would reduce error and allow further insights into the impact of USSF allocated players on women's club soccer performance.
+
+With more time (and knowledge!), I would do a time-series analysis in order to see the impact of US-allocated players over the course of a season. I believe there would be really interesting insights to gather from these analyses. 
+
+
+[^1]:Federation players, or "allocated players", are professional soccer players whose salaries for playing in the NWSL are paid for by their national federations. In the case of this study, that is the United States Soccer Federation. Source is Jeff Kassouf at [Equalizer Soccer](https://equalizersoccer.com/2020/02/20/tierna-davidson-ali-krieger-earn-uswnt-nwsl-federation-contracts-for-2020-details/)
+[^2]:In the NWSL (and broadly across all soccer leagues), teams will earn 3 points for every game they win, 1 point for every draw, and 0 points for every game they lose. If teams are tied on points, the places are decided on goal difference, which is the number of goals that the team has scored over the course of the regular season subtracting the number of goals that the team has conceded over the course of the regular season. If teams are tied on points after this, goals for is the deciding variable.
+[^3]:Sources for the allocation draft are hyperlinked by year: [2016](https://equalizersoccer.com/2016/01/13/nwsl-announces-us-soccer-allocations-for-2016/), [2017](https://www.nwslsoccer.com/news/nwsl-announces-u-s-wnt-allocated-players-for-2017-season), [2018](https://equalizersoccer.com/2018/02/15/nwsl-announces-34-federation-players-for-2018-season/), [2019](https://www.starsandstripesfc.com/2019/3/4/18250201/ussf-22-allocated-uswnt-players-nwsl-2019)
+[^4]: The Western New York Flash qualified for playoffs in the 2 seasons they existed in this study: 2017 and 2018. 
+[^5]:In 2020, the NWSL hosted the first inaugural Challenge Cup, which brought teams together into a tournament-style series of games that eventually crowned the Houston Dash champions. The NWSL was the first professional league in the world to implement a "bubble" system in order to continue play. 
