@@ -135,8 +135,8 @@ player_stats_head %>%
 One final step is to join these two data sets together to have our final data set with the following code
 ```{r dataset_final, echo = FALSE}
 alloc_stats_by_team_season <- player_stats %>% 
-    group_by(team_id, season) %>% # our group
-    summarise( # summarise operation by group
+    group_by(team_id, season) %>% 
+    summarise( 
         total_alloc = sum(allocated),
         mean_min = mean(min[allocated == 1]),
         mean_starts = mean(starts[allocated == 1])
