@@ -110,7 +110,6 @@ player_stats_head %>%
   kableExtra::kable_classic()
 ```
 
-We also need to figure out which players are allocated from the years 2016 - 2019. This is not a publicly available pre-compiled data set (that I could find!) so I manually searched and compiled this data set.[^3] We are joining this data set to the `player_stats` data set from above with a binary flag for `allocated == 1` where the player was a United States Federation allocated player that year and `allocated == 0` if the player was *not* a USF allocated player that year. With that final addition, we have our final, person/player-level data set. 
 ```{r dataset_5, echo = FALSE}
 allocated_players <- read.csv("allocated_players.csv")
 
@@ -133,7 +132,7 @@ player_stats_head %>%
   kableExtra::kable_classic()
 ```
 
-One final step is to join these two data sets together to have our final data set with 
+One final step is to join these two data sets together to have our final data set with the following code
 ```{r dataset_final, echo = FALSE}
 alloc_stats_by_team_season <- player_stats %>% 
     group_by(team_id, season) %>% # our group
