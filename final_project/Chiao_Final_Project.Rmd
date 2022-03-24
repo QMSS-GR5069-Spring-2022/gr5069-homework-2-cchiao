@@ -71,16 +71,16 @@ team_xover <- nwslR::franchise %>%
   select(team_id, team_name) %>%
   distinct(team_id, team_name)
 
-team_stats <- left_join(team_stats, team_xover, by = "team_id")
+team_stat <- left_join(team_stats, team_xover, by = "team_id")
 
-team_stats <- as_tibble(team_stats)
+team_stat <- as_tibble(team_stats)
 
-team_stats_head <- team_stats %>% select(
+team_stat_head <- team_stats %>% select(
   season, team_name, wins, draws, losses, goals_for, league_ranking, playoffs)
 
-team_stats_head <- head(team_stats_head)
+team_stat_head <- head(team_stats_head)
 
-team_stats_head %>%
+team_stat_head %>%
   kableExtra::kbl(booktabs = T) %>%
   kableExtra::kable_classic()
   
