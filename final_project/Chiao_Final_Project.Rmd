@@ -10,16 +10,6 @@ subtitle: GR5015 Final Project
 ---
 
 ```{r setup, include = FALSE}
-knitr::opts_chunk$set(echo = TRUE, 
-                      warning = FALSE,
-                      error = FALSE, 
-                      message = FALSE, 
-                      tidy.opts=list(width.cutoff=60),
-                      tidy = TRUE) # just for the outline
-
-set.seed(998350) # important because allows to trace random procedures 
-rm(list = ls(all = TRUE)) # remove all previous objects 
-
 
 ```
 
