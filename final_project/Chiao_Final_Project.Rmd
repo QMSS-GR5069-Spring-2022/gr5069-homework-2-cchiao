@@ -1,5 +1,5 @@
 ---
-title: 'Country Over Club?: An Analysis of USWNT Players and NWSL Club Performance'
+title: 'An Analysis of USWNT Players and NWSL Club Performance'
 author: "Christa Chiao (cjc2297)"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
@@ -21,7 +21,6 @@ set.seed(998350) # important because allows to trace random procedures
 rm(list = ls(all = TRUE)) # remove all previous objects 
 
 
-setwd("C:/Users/chris/OneDrive/Documents/R/GR5015/Final Project")
 ```
 
 ## Introduction
@@ -241,6 +240,7 @@ register_google(key = "[AIzaSyDVmtZoTwHnloEAIR0To1iqzl5E-kdpw0w]", write = TRUE)
 library(plotly)
 library(rgdal)
 nyc <- readOGR(dsn = "/Users/jackiez/Downloads/assignment-2-airbnb-zhuyijie25-main/data/nyc_boroughs_map", layer = "nybb")
+# set up the environment for the project
 ```
 
 The following table breaks out game statistics by team. The Boston Breakers were dissolved in 2017 and the Western New York Flash was dissolved in 2018. 
