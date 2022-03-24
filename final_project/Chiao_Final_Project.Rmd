@@ -21,7 +21,6 @@ set.seed(998350) # important because allows to trace random procedures
 rm(list = ls(all = TRUE)) # remove all previous objects 
 
 
-setwd("C:/Users/chris/OneDrive/Documents/R/GR5015/Final Project")
 ```
 
 ## Introduction
