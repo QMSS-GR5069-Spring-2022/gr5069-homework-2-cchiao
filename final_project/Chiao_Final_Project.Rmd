@@ -1,5 +1,5 @@
 ---
-title: 'Country Over Club?: An Analysis of USWNT Players and NWSL Club Performance'
+title: 'An Analysis of USWNT Players and NWSL Club Performance'
 author: "Christa Chiao (cjc2297)"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
